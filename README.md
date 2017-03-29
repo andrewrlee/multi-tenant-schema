@@ -5,15 +5,16 @@ Imposing different levels of cardinality through use of mixin/trait based schema
 
 Requires steps:
 
-  1.) Define and interface that describes that a relationship exists between 2 entities, e.g:
+  1.) Define a functional interface that describes that a relationship exists between 2 entities, e.g:
 
 ```java
+@FunctionalInterface
 public interface LinkedToAddresses<T> {
   T retrieveAssociatedAddresses(AddressStore store, String customerId);    
 }
 ```
 
-(where the parameters provide enough information to look up the associated entities)
+(where the parameters of the function provide enough context to look up the associated entities)
 
  2.) Define interface subtypes that express cardinality:
 
@@ -38,8 +39,18 @@ public interface LinkedToAddresses<T> {
   3.) Then add generic methods for each type of relationship to some form of DAO like object, e.g:
 
 ```java
-  public <T> T address(LinkedToAddresses<T> rel, String customerId) {
-    return rel.retrieveAssociatedAddresses(addresses, customerId);
+  public class DataStore {
+
+    private final BasketStore basket = ...;
+    private final AddressStore addresses = ...;
+    
+    public <T> T basketContents(LinkedToItems<T> rel, String customerId) {
+      return rel.retrieveAssociatedItems(basket, customerId);
+    }
+    
+    public <T> T address(LinkedToAddresses<T> rel, String customerId) {
+      return rel.retrieveAssociatedAddresses(addresses, customerId);
+    }
   }
 ```     
 
@@ -78,29 +89,27 @@ public interface LinkedToAddresses<T> {
   }
 ```
 
-  5.) An example of this in action:
+  5.) Then...:
 
 ```java
   DataStore store = new DataStore();
 
-  // Cardinality of relationship is determined by passed in schema.
-  // Get compile time safety regarding type of the returned values:
+  // Achieves compile time safety regarding type of the returned values:
   
   List<Item> items = store.basketContents(PREMIUM, "1");
-  List<Address> addresses = store.address(PREMIUM, "1");
-  
   Item standardAccountItem = store.basketContents(STANDARD, "1");
-  List<Address> standardAccountAddresses = store.address(STANDARD, "1");
-  
   Void nothing = store.basketContents(DEMO, "1");
 
-  // The schema provides a view on the same underlying data:
+  List<Address> addresses = store.address(PREMIUM, "1");
+  List<Address> standardAccountAddresses = store.address(STANDARD, "1");
+  Void alsoNothing = store.address(DEMO, "1");
+  
+  // Another way of looking at it is seeing the schema providing a view on the same underlying data:
   
   printAssociations(store, PREMIUM, "1");
   printAssociations(store, STANDARD, "1");
   printAssociations(store, TRIAL, "1");
   printAssociations(store, DEMO, "1");
-
 ```
 
 Prints the following:
